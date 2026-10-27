@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>How did we do?</title>
+<style>
+  :root{--bg:#f6f4ef;--card:#fff;--ink:#1f2a2e;--muted:#5d6b70;--accent:#1f6f6b;--star:#d9a400;--line:#e3dfd6}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px 16px}
+  .card{background:var(--card);width:100%;max-width:440px;border-radius:18px;padding:32px 24px;box-shadow:0 6px 30px rgba(0,0,0,.07);text-align:center}
+  .clinic{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 12px}
+  h1{font-size:24px;line-height:1.25;margin:0 0 24px}
+  .stars{display:flex;justify-content:center;gap:6px}
+  .stars button{background:none;border:0;padding:4px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .stars svg{width:48px;height:48px;fill:#ddd;transition:fill .15s,transform .15s}
+  .stars button.on svg{fill:var(--star)}
+  .stars button:active svg{transform:scale(.9)}
+  .hint{color:var(--muted);font-size:14px;margin:12px 0 0}
+  p.lead{margin:0 0 18px}
+  textarea{width:100%;font:inherit;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;color:var(--ink);min-height:130px;resize:vertical}
+  textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+  .btn{display:block;width:100%;margin-top:16px;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:14px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none}
+  .btn[disabled]{opacity:.6}
+  .err{color:#b3261e;font-size:14px;margin-top:10px}
+  .spinner{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;margin:8px auto;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="card">
+
+  <section id="loading"><div class="spinner"></div></section>
+
+  <section id="invalid" hidden>
+    <h1>This link is no longer active</h1>
+    <p class="lead">It looks like this survey has already been completed. Thank you for your feedback.</p>
+  </section>
+
+  <section id="offline" hidden>
+    <h1>Something went wrong</h1>
+    <p class="lead">We couldn't load the survey. Please check your connection and try again.</p>
+    <button class="btn" type="button" onclick="location.reload()">Try again</button>
+  </section>
+
+  <section id="rate" hidden>
+    <p class="clinic" data-clinic-name></p>
+    <h1>How would you rate our service today?</h1>
+    <div class="stars" role="radiogroup" aria-label="Rating out of 5"></div>
+    <p class="hint">Tap a star</p>
+  </section>
+
+  <section id="improve" hidden>
+    <p class="clinic" data-clinic-name></p>
+    <p class="lead" id="improveText"></p>
+    <form id="fbForm">
+      <textarea id="fbText" maxlength="1000" placeholder="Your feedback"></textarea>
+      <button class="btn" type="submit">Submit</button>
+      <p class="err" id="fbErr" hidden>Sorry, that didn't send. Please try again.</p>
+    </form>
+  </section>
+
+  <section id="google" hidden>
+    <h1>Thank you!</h1>
+    <p class="lead">We'd be really grateful if you could share your experience on Google. It only takes a minute and helps others find us.</p>
+    <a class="btn" id="googleLink" href="#">Leave a Google review</a>
+  </section>
+
+  <section id="thanks" hidden>
+    <h1>Thank you</h1>
+    <p class="lead">We've received your feedback and will use it to improve.</p>
+  </section>
+
+</main>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyTxYQLcYuqWyAaYwMYRR19GsHJZ0qy_CnlcqG65XnTzJbBfjiLUuuy3jUJ_AZFpigw/exec";
+
+const CLINICS = {
+  Nantwich: { name: "Nantwich Chiropractic Clinic", review: "https://g.page/r/CSRbAxjjFiV8EBM/review" },
+  Stone:    { name: "Lawrence Chiropractic Clinic", review: "https://g.page/r/Ca4AYMdZhX4xEBM/review" }
+};
+
+const token = new URLSearchParams(location.search).get("t") || "";
+let clinic = null, stars = 0;
+const show = id => document.querySelectorAll("main > section").forEach(s => s.hidden = s.id !== id);
+
+async function api(params, method = "GET") {
+  const body = new URLSearchParams(params);
+  const res = method === "GET"
+    ? await fetch(API_URL + "?" + body)
+    : await fetch(API_URL, { method: "POST", body });
+  return res.json();
+}
+
+async function start() {
+  if (!token) return show("invalid");
+  try {
+    const r = await api({ action: "check", t: token });
+    if (r.status !== "ok" || !CLINICS[r.clinic]) return show("invalid");
+    clinic = CLINICS[r.clinic];
+  } catch { return show("offline"); }
+
+  document.querySelectorAll("[data-clinic-name]").forEach(el => el.textContent = clinic.name);
+  document.getElementById("googleLink").href = clinic.review;
+
+  const wrap = document.querySelector(".stars");
+  const path = "M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z";
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-label", i + " star" + (i > 1 ? "s" : ""));
+    b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
+    b.addEventListener("click", () => choose(i));
+    wrap.appendChild(b);
+  }
+  show("rate");
+
+  function choose(n) {
+    stars = n;
+    [...wrap.children].forEach((b, i) => { b.classList.toggle("on", i < n); b.setAttribute("aria-checked", i === n - 1); });
+    const txt = document.getElementById("fbText");
+    document.getElementById("improveText").textContent = n === 5
+      ? "Thank you! Is there anything we could do even better?"
+      : "We pride ourselves on providing the best service possible. Please let us know how we can improve and gain 5 stars.";
+    txt.required = n < 5;
+    txt.placeholder = n === 5 ? "Your feedback (optional)" : "Your feedback";
+    setTimeout(() => show("improve"), 250);
+  }
+
+  document.getElementById("fbForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const btn = e.target.querySelector("button"), err = document.getElementById("fbErr");
+    btn.disabled = true; btn.textContent = "Sending…"; err.hidden = true;
+    try {
+      const r = await api({ action: "submit", t: token, stars, feedback: document.getElementById("fbText").value.trim() }, "POST");
+      if (r.status === "used") return show("invalid");
+      if (r.status !== "ok") throw 0;
+      show(stars === 5 ? "google" : "thanks");
+    } catch {
+      err.hidden = false; btn.disabled = false; btn.textContent = "Submit";
+    }
+  });
+}
+start();
+</script>
+</body>
+</html>
