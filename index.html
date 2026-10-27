@@ -123,7 +123,7 @@ async function start() {
     const txt = document.getElementById("fbText");
     document.getElementById("improveText").textContent = n === 5
       ? "Thank you! Is there anything we could do even better?"
-      : "We pride ourselves on providing the best service possible. Please let us know how we can improve and gain 5 stars.";
+      : "We strive to make every visit a 5-star experience, and we're sorry we haven't managed that for you today. Please let us know how we can improve, so we can give you the 5-star service you deserve.";
     txt.required = n < 5;
     txt.placeholder = n === 5 ? "Your feedback (optional)" : "Your feedback";
     setTimeout(() => show("improve"), 250);
